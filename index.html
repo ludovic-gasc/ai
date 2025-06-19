@@ -139,7 +139,7 @@
                     <div class="grid md:grid-cols-2 gap-6">
                          <div class="prompt-card border-r-0 md:border-r md:pr-6 border-stone-200">
                             <h3 class="text-xl font-bold mb-3 text-red-600">Demande Vague</h3>
-                            <div class="bg-red-50 text-red-800 p-4 rounded-lg text-left mb-4">"<p>Écris-moi un mail pour un client."</p></div>
+                            <div class="bg-red-50 text-red-800 p-4 rounded-lg text-left mb-4"><p>Écris-moi un mail pour un client.</p></div>
                             <h4 class="font-semibold mb-2">Résultat Obtenu :</h4>
                             <div class="bg-stone-100 p-4 rounded-lg text-left text-sm text-stone-600">
                                 <p><strong>Objet :</strong> Nouvelles</p>
@@ -270,9 +270,77 @@
         <div id="slide-counter" class="text-sm font-medium text-stone-600">1 / 8</div>
         <button id="next-btn" title="Suivant">→</button>
     </div>
+    
+    <!-- API Key Modal -->
+    <div id="api-key-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full">
+            <h2 class="text-2xl font-bold mb-4">Clé d'API Google AI requise</h2>
+            <p class="text-stone-600 mb-4 text-sm">Pour utiliser la fonctionnalité de Méta-Prompting, veuillez fournir votre clé d'API Google AI. Elle sera stockée dans un cookie pour les visites futures.</p>
+            <div>
+                <label for="api-key-input" class="block text-sm font-medium text-stone-700">Votre Clé d'API</label>
+                <input type="password" id="api-key-input" class="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm placeholder-stone-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm">
+            </div>
+            <p class="text-xs text-stone-500 mt-2">Vous pouvez obtenir une clé d'API sur <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-600 hover:underline">Google AI Studio</a>.</p>
+            <button id="save-api-key-btn" class="mt-6 w-full bg-amber-600 text-white font-bold py-2 px-4 rounded-full hover:bg-amber-700 transition-colors">Enregistrer et Continuer</button>
+        </div>
+    </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // --- Cookie Functions ---
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                const date = new Date();
+                date.setTime(date.getTime() + (days*24*60*60*1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "")  + expires + "; path=/; SameSite=Lax";
+        }
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for(let i=0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0)==' ') c = c.substring(1,c.length);
+                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+            }
+            return null;
+        }
+
+        // --- API Key Modal Logic ---
+        const apiKeyModal = document.getElementById('api-key-modal');
+        const saveApiKeyBtn = document.getElementById('save-api-key-btn');
+        const apiKeyInput = document.getElementById('api-key-input');
+        let googleApiKey = null;
+
+        function showApiKeyModal() {
+            apiKeyModal.classList.remove('hidden');
+            apiKeyModal.classList.add('flex');
+        }
+
+        function hideApiKeyModal() {
+            apiKeyModal.classList.add('hidden');
+            apiKeyModal.classList.remove('flex');
+        }
+        
+        googleApiKey = getCookie('googleApiKey');
+        if (!googleApiKey) {
+            showApiKeyModal();
+        }
+
+        saveApiKeyBtn.addEventListener('click', () => {
+            const key = apiKeyInput.value.trim();
+            if (key) {
+                googleApiKey = key;
+                setCookie('googleApiKey', key, 365);
+                hideApiKeyModal();
+            } else {
+                apiKeyInput.classList.add('border-red-500');
+            }
+        });
+
+
         // --- Presentation Logic ---
         const slides = document.querySelectorAll('.slide');
         const prevBtn = document.getElementById('prev-btn');
@@ -343,6 +411,11 @@
             const btnText = document.getElementById('btn-text');
 
             metaPromptBtn.addEventListener('click', async () => {
+                if (!googleApiKey) {
+                    showApiKeyModal();
+                    return;
+                }
+                
                 const userRequest = metaPromptInput.value;
                 if (!userRequest.trim()) {
                     metaPromptOutput.textContent = "Veuillez entrer un prompt à améliorer.";
@@ -359,8 +432,7 @@
 
 
                 // --- Gemini API Call ---
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`;
 
                 const metaPrompt = `# MISSION : ARCHITECTE DE PROMPTS IA
 
@@ -401,7 +473,19 @@ Demande : "${userRequest}"`;
                     });
 
                     if (!response.ok) {
-                        throw new Error(`API Error: ${response.statusText}`);
+                        const errorData = await response.json();
+                        console.error("API Error Data:", errorData);
+                        let errorMessage = `Erreur de l'API: ${response.statusText}.`;
+                        if (errorData.error && errorData.error.message) {
+                           errorMessage += ` Détail: ${errorData.error.message}`;
+                        }
+                        if(response.status === 400){
+                            errorMessage = "Erreur : La clé d'API fournie n'est pas valide. Veuillez la vérifier.";
+                            setCookie('googleApiKey', '', -1); // Delete invalid cookie
+                            googleApiKey = null;
+                            showApiKeyModal();
+                        }
+                        throw new Error(errorMessage);
                     }
 
                     const result = await response.json();
@@ -420,7 +504,7 @@ Demande : "${userRequest}"`;
 
                 } catch (error) {
                     console.error("Error calling Gemini API:", error);
-                    metaPromptOutput.textContent = "Erreur de connexion à l'API. Veuillez réessayer plus tard.";
+                    metaPromptOutput.textContent = error.message;
                     metaPromptOutput.classList.remove('hidden', 'bg-green-50', 'text-green-800');
                     metaPromptOutput.classList.add('bg-red-50', 'text-red-800');
                 } finally {
