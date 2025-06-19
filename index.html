@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Présentation : Du Défiance à la Maîtrise de l'IA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Neutral Tones -->
+    <!-- Application Structure Plan: The SPA is structured as a slide-deck presentation. Each logical step is a dedicated 'slide'. JavaScript controls visibility, showing one slide at a time. Navigation controls allow linear progression, mimicking a presentation tool to focus user attention on a single concept. -->
+    <!-- Visualization & Content Choices: Content is encapsulated within individual slide containers.
+        - Slide 1: Title, hooking the user with the core problem statement.
+        - Slide 2: Reframing the problem.
+        - Slide 3: Interactive proof via the prompt comparator.
+        - Slide 4: Interactive cards for key skills. Technique 2 is now "Examples & Counter-examples".
+        - Slide 5: Interactive simulation of meta-prompting, powered by a live Gemini API call with a more detailed meta-prompt.
+        - Slide 6: Conceptual diagram for Deep Research.
+        - Slide 7: Strong, visual call to action.
+        - Slide 8: A slide with clickable links to concrete examples, with corrected titles and icons.
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used.
+    -->
+    <style>
+        body, html {
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+        #presentation-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.6s ease-in-out;
+            background-color: #f8fafc; /* bg-slate-50 */
+        }
+        .slide.active {
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 1;
+        }
+        .prompt-card { transition: all 0.3s ease-in-out; }
+        .prompt-card-result { transition: opacity 0.5s ease-in-out; }
+        .technique-card-back { transform: rotateY(180deg); backface-visibility: hidden; }
+        .technique-card-front { backface-visibility: hidden; }
+        .technique-card.is-flipped .technique-card-inner { transform: rotateY(180deg); }
+        .technique-card-inner { transform-style: preserve-3d; transition: transform 0.6s; }
+        .perspective-1000 { perspective: 1000px; }
+        
+        #navigation {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(5px);
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        #navigation button {
+            background-color: #fb923c; /* orange-400 */
+            color: white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        #navigation button:hover {
+            background-color: #f97316; /* orange-500 */
+        }
+        #navigation button:disabled {
+            background-color: #d1d5db; /* gray-300 */
+            cursor: not-allowed;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #fb923c;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-stone-800">
+
+    <div id="presentation-container">
+
+        <!-- Slide 1 -->
+        <div class="slide active">
+            <div class="text-center max-w-3xl">
+                <h1 class="text-3xl md:text-5xl font-bold mb-4">"L'IA, c'est nul, ça hallucine."</h1>
+                <div class="text-8xl my-8">🧠🌀</div>
+                <p class="text-lg text-stone-700">Qui n'a jamais obtenu une réponse absurde d'une IA ? Une date fausse, un fait inventé... C'est frustrant, et on se dit que l'outil n'est pas fiable. Ce sentiment est parfaitement normal.</p>
+            </div>
+        </div>
+
+        <!-- Slide 2 -->
+        <div class="slide">
+            <div class="text-center max-w-3xl">
+                <h1 class="text-3xl md:text-5xl font-bold mb-4">Et si le problème... c'était nous ?</h1>
+                <div class="text-8xl my-8">🗣️❓</div>
+                <p class="text-lg text-stone-700">En réalité, ce n'est pas un défaut de l'outil, mais un problème de communication. L'IA est un stagiaire junior surpuissant, mais sans expérience. Une instruction vague donne un résultat vague.</p>
+            </div>
+        </div>
+
+        <!-- Slide 3 -->
+        <div class="slide">
+            <div class="w-full max-w-5xl text-center">
+                 <h2 class="text-3xl font-bold mb-8">La Preuve : Demande Vague vs Ordre Précis</h2>
+                <div id="prompt-comparator" class="w-full bg-white p-6 md:p-8 rounded-xl shadow-md border border-stone-200">
+                    <div class="grid md:grid-cols-2 gap-6">
+                         <div class="prompt-card border-r-0 md:border-r md:pr-6 border-stone-200">
+                            <h3 class="text-xl font-bold mb-3 text-red-600">Demande Vague</h3>
+                            <div class="bg-red-50 text-red-800 p-4 rounded-lg text-left mb-4">"<p>Écris-moi un mail pour un client."</p></div>
+                            <h4 class="font-semibold mb-2">Résultat Obtenu :</h4>
+                            <div class="bg-stone-100 p-4 rounded-lg text-left text-sm text-stone-600">
+                                <p><strong>Objet :</strong> Nouvelles</p>
+                                <p>Cher client, J'espère que vous allez bien...</p>
+                                <p>Cordialement,<br>Moi</p>
+                            </div>
+                        </div>
+                        <div class="prompt-card">
+                            <h3 class="text-xl font-bold mb-3 text-green-600">Ordre Précis</h3>
+                            <div id="good-prompt-container" class="bg-green-50 text-green-800 p-4 rounded-lg text-left mb-4 relative text-xs">
+                                <p><strong>&lt;rôle&gt;</strong> Tu es un expert en vente B2B. <strong>&lt;/rôle&gt;</strong><br><strong>&lt;contexte&gt;</strong> Mon client Jean hésite sur le prix de 2000€. Il ne voit pas la valeur. <strong>&lt;/contexte&gt;</strong><br><strong>&lt;tâche&gt;</strong> Rédige un mail court et percutant sur la valeur et le ROI. <strong>&lt;/tâche&gt;</strong></p>
+                             </div>
+                            <h4 class="font-semibold mb-2">Résultat Obtenu :</h4>
+                            <div id="good-result-container" class="bg-stone-100 p-4 rounded-lg text-left text-sm text-stone-600 relative min-h-[120px]">
+                                <div id="good-result-overlay" class="prompt-card-result absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col justify-center items-center rounded-lg z-10">
+                                     <button id="improve-prompt-btn" class="bg-amber-600 text-white font-bold py-2 px-4 rounded-full hover:bg-amber-700 transition-colors">Révéler</button>
+                                </div>
+                                <div id="good-result-content" class="prompt-card-result opacity-0">
+                                    <p><strong>Objet :</strong> Votre solution Alpha : un investissement</p>
+                                    <p>Bonjour Jean, Cet investissement de 2000€ est conçu pour vous faire économiser 5h/semaine, soit un ROI en 3 mois...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4 -->
+        <div class="slide">
+             <div class="w-full max-w-4xl text-center">
+                 <h2 class="text-3xl font-bold mb-8">La Compétence : Le Prompt Engineering</h2>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="technique-card perspective-1000 h-64">
+                        <div class="technique-card-inner w-full h-full relative" id="technique-card-1">
+                            <div class="technique-card-front absolute w-full h-full bg-white p-6 rounded-xl shadow-sm border border-stone-200 flex flex-col justify-center items-center cursor-pointer">
+                               <div class="text-6xl mb-2">🎭</div> <h3 class="text-2xl font-bold">1. Donner un Rôle</h3> <p class="text-stone-500 text-sm mt-2">Cliquez/Touchez</p>
+                            </div>
+                            <div class="technique-card-back absolute w-full h-full bg-amber-600 text-white p-6 rounded-xl shadow-lg flex flex-col justify-center items-center cursor-pointer">
+                                <h3 class="text-xl font-bold mb-2">Le Principe</h3> <p class="text-center">Dites à l'IA "qui" elle doit être pour activer son expertise.</p> <p class="mt-3 text-sm font-mono bg-black/20 px-2 py-1 rounded">"Tu es un expert marketing..."</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="technique-card perspective-1000 h-64">
+                         <div class="technique-card-inner w-full h-full relative" id="technique-card-2">
+                            <div class="technique-card-front absolute w-full h-full bg-white p-6 rounded-xl shadow-sm border border-stone-200 flex flex-col justify-center items-center cursor-pointer">
+                                <div class="text-6xl mb-2">👍👎</div> <h3 class="text-2xl font-bold">2. Utiliser des Exemples</h3> <p class="text-stone-500 text-sm mt-2">Cliquez/Touchez</p>
+                            </div>
+                             <div class="technique-card-back absolute w-full h-full bg-amber-600 text-white p-6 rounded-xl shadow-lg flex flex-col justify-center items-center cursor-pointer">
+                                <h3 class="text-xl font-bold mb-2">Le Principe</h3> <p class="text-center">Montrez à l'IA ce qu'il faut faire (et ne pas faire) pour guider son style et sa structure.</p> <p class="mt-3 text-sm font-mono bg-black/20 px-2 py-1 rounded">"✅ Fais ceci... ❌ Pas cela..."</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5 -->
+        <div class="slide">
+            <div class="w-full max-w-2xl text-center">
+                 <h2 class="text-3xl font-bold mb-8">La Super-Compétence : Le Méta-Prompting</h2>
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-md border border-stone-200">
+                    <div class="text-6xl mb-4">🤖🤝🧑</div>
+                    <h3 class="text-xl font-bold mb-4">La flemme de prompter ? Demandez à l'IA !</h3>
+                    <div class="w-full bg-stone-100 p-4 rounded-lg">
+                        <p class="text-left text-sm font-semibold text-stone-700">Entrez un prompt vague ici :</p>
+                        <textarea id="meta-prompt-input" class="w-full bg-white rounded p-2 text-sm h-16 resize-none" placeholder="Ex: Fais une synthèse sur le télétravail.">Fais une synthèse sur le télétravail.</textarea>
+                        <button id="meta-prompt-btn" class="mt-3 bg-amber-600 text-white font-bold py-2 px-4 rounded-full hover:bg-amber-700 transition-colors flex items-center justify-center mx-auto disabled:bg-gray-400">
+                           <span id="btn-text">✨ Améliorer ce prompt</span>
+                           <div id="loading-spinner" class="loader ml-3 hidden"></div>
+                        </button>
+                        <div id="meta-prompt-output" class="mt-4 bg-green-50 text-green-800 p-4 rounded-lg text-left text-sm hidden whitespace-pre-wrap"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 6 -->
+        <div class="slide">
+             <div class="w-full max-w-4xl text-center">
+                 <h2 class="text-3xl font-bold mb-8">La Révolution : Le "Deep Research"</h2>
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-md border border-stone-200">
+                    <h3 class="text-2xl font-bold mb-6">Au-delà des questions : Le Partenaire de Recherche</h3>
+                    <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-4">
+                        <div class="text-center"><div class="bg-amber-100 text-amber-800 p-4 rounded-lg shadow"><p class="font-bold">PROMPT DE MISSION</p><p class="text-sm">"Analyse X et fais-moi une synthèse..."</p></div></div>
+                        <div class="text-4xl text-stone-400 transform rotate-90 md:rotate-0">→</div>
+                        <div class="flex items-center justify-center space-x-2"><div class="bg-stone-200 p-3 rounded-full text-2xl" title="PDFs">📄</div><div class="bg-stone-200 p-3 rounded-full text-2xl" title="Web">🌐</div><div class="bg-stone-200 p-3 rounded-full text-2xl" title="Données">📊</div></div>
+                        <div class="text-4xl text-stone-400 transform rotate-90 md:rotate-0">→</div>
+                        <div class="text-left bg-green-50 text-green-800 p-4 rounded-lg shadow"><p class="font-bold">RAPPORT DE SYNTHÈSE</p><ul class="list-disc list-inside text-sm"><li>Tendance 1: ...</li><li>Risque A: ...</li></ul></div>
+                    </div>
+                    <p class="mt-6 text-stone-600">Vous ne posez plus une question, vous déléguez une mission complète.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 7 -->
+        <div class="slide">
+            <div class="text-center max-w-2xl">
+                <h1 class="text-4xl md:text-5xl font-bold mb-4">Ne demandez plus, Pilotez.</h1>
+                <div class="flex justify-center items-center text-8xl font-bold my-10">
+                    <span class="text-stone-400">❓</span>
+                    <span class="mx-8 text-4xl text-amber-600 animate-pulse">→</span>
+                    <span class="text-stone-800">🧭</span>
+                </div>
+                <p class="text-xl text-stone-600">L'IA n'est pas une boule de cristal. C'est le copilote le plus puissant jamais créé.</p>
+                <p class="mt-6 text-lg text-stone-800 font-semibold bg-amber-100 p-4 rounded-lg">Votre prochain défi : demandez-lui "Améliore ce prompt pour moi."</p>
+            </div>
+        </div>
+
+        <!-- Slide 8 -->
+        <div class="slide">
+            <div class="text-center max-w-3xl">
+                <h1 class="text-3xl md:text-5xl font-bold mb-8">Exemples Concrets</h1>
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-md border border-stone-200 w-full">
+                    <ul class="space-y-4 text-left">
+                        <li><a href="https://g.co/gemini/share/0c9a18b55c7d" target="_blank" class="text-blue-600 hover:underline text-lg flex items-center"><span class="mr-3 text-2xl">🌹</span>Guide pour Votre Rosier</a></li>
+                        <li><a href="https://g.co/gemini/share/d7e96a019542" target="_blank" class="text-blue-600 hover:underline text-lg flex items-center"><span class="mr-3 text-2xl">🏠</span>Analyse Locative</a></li>
+                        <li><a href="https://g.co/gemini/share/f1604557b658" target="_blank" class="text-blue-600 hover:underline text-lg flex items-center"><img src="https://flagcdn.com/w20/fr.png" srcset="https://flagcdn.com/w40/fr.png 2x" alt="Drapeau Français" class="w-5 h-auto mr-3">Analyse des Villes Françaises</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    
+    <div id="navigation">
+        <button id="prev-btn" title="Précédent">←</button>
+        <div id="slide-counter" class="text-sm font-medium text-stone-600">1 / 8</div>
+        <button id="next-btn" title="Suivant">→</button>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- Presentation Logic ---
+        const slides = document.querySelectorAll('.slide');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const slideCounter = document.getElementById('slide-counter');
+        let currentSlide = 0;
+
+        function showSlide(index) {
+            slides.forEach((slide, i) => {
+                slide.classList.toggle('active', i === index);
+            });
+            currentSlide = index;
+            slideCounter.textContent = `${index + 1} / ${slides.length}`;
+            prevBtn.disabled = index === 0;
+            nextBtn.disabled = index === slides.length - 1;
+        }
+
+        prevBtn.addEventListener('click', () => {
+            if (currentSlide > 0) {
+                showSlide(currentSlide - 1);
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentSlide < slides.length - 1) {
+                showSlide(currentSlide + 1);
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') {
+                nextBtn.click();
+            } else if (e.key === 'ArrowLeft') {
+                prevBtn.click();
+            }
+        });
+
+        showSlide(0);
+
+        // --- Interactive Elements Logic ---
+
+        // Prompt Comparator
+        const improveBtn = document.getElementById('improve-prompt-btn');
+        if (improveBtn) {
+            const goodResultOverlay = document.getElementById('good-result-overlay');
+            const goodResultContent = document.getElementById('good-result-content');
+            improveBtn.addEventListener('click', () => {
+                goodResultOverlay.style.opacity = '0';
+                goodResultOverlay.style.pointerEvents = 'none';
+                goodResultContent.style.opacity = '1';
+            });
+        }
+
+        // Flipping Technique Cards
+        const techniqueCards = document.querySelectorAll('.technique-card');
+        techniqueCards.forEach(card => {
+            card.addEventListener('click', () => {
+                card.classList.toggle('is-flipped');
+            });
+        });
+
+        // --- Meta-Prompting with Gemini API ---
+        const metaPromptBtn = document.getElementById('meta-prompt-btn');
+        if (metaPromptBtn) {
+            const metaPromptInput = document.getElementById('meta-prompt-input');
+            const metaPromptOutput = document.getElementById('meta-prompt-output');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const btnText = document.getElementById('btn-text');
+
+            metaPromptBtn.addEventListener('click', async () => {
+                const userRequest = metaPromptInput.value;
+                if (!userRequest.trim()) {
+                    metaPromptOutput.textContent = "Veuillez entrer un prompt à améliorer.";
+                    metaPromptOutput.classList.remove('hidden', 'bg-green-50', 'text-green-800');
+                    metaPromptOutput.classList.add('bg-red-50', 'text-red-800');
+                    return;
+                }
+
+                // --- Show loading state ---
+                btnText.textContent = "Amélioration en cours...";
+                loadingSpinner.classList.remove('hidden');
+                metaPromptBtn.disabled = true;
+                metaPromptOutput.classList.add('hidden');
+
+
+                // --- Gemini API Call ---
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                const metaPrompt = `# MISSION : ARCHITECTE DE PROMPTS IA
+
+## 1. Ton Rôle et Objectif
+Tu es un Architecte de Prompts expert (prompt-engineering). Ton unique fonction est de transformer une idée ou une demande simple en un prompt de haute qualité, structuré, détaillé et prêt à l'emploi pour une IA générative (comme GPT-4, Claude 3 ou Gemini).
+
+## 2. Structure du Prompt à Générer
+Chaque prompt que tu conçois doit être une instruction complète et autonome. Il doit contenir les sections suivantes, clairement définies :
+- \`[RÔLE ET OBJECTIF]\` : Qui est l'IA et quel est son but principal ?
+- \`[CONTEXTE]\` : Informations cruciales que l'IA doit connaître pour accomplir sa tâche.
+- \`[INSTRUCTIONS DÉTAILLÉES]\` : Une séquence d'actions claires et logiques. Utilise des listes numérotées si nécessaire.
+- \`[FORMAT DE SORTIE]\` : Description exacte de la structure de la réponse (ex: Markdown, JSON, liste à puces, tableau).
+- \`[CONTRAINTES ET DIRECTIVES]\` : Ton à employer, éléments à exclure, longueur, langue, etc.
+
+## 3. Règle Fondamentale de Formatage de ta Réponse
+Ceci est la règle la plus importante et non négociable de notre interaction.
+Ta réponse doit contenir **EXCLUSIVEMENT** et **UNIQUEMENT** le prompt final que tu as créé.
+Ce prompt doit être encapsulé dans un bloc de code Markdown. Le bloc doit commencer par \`\`\`markdown et se terminer par \`\`\`.
+N'écris **ABSOLUMENT RIEN** avant \`\`\`markdown ou après \`\`\`. Pas de "Voici le prompt :", pas de "J'espère que cela vous convient.", rien. L'intégralité de ta réponse doit être le bloc de code.
+
+## 4. Prise en compte de la demande
+À partir de maintenant, prends la demande utilisateur suivante et applique rigoureusement toutes les règles ci-dessus pour générer le prompt final.
+
+Demande : "${userRequest}"`;
+
+                const payload = {
+                    contents: [{
+                        role: "user",
+                        parts: [{ text: metaPrompt }]
+                    }]
+                };
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    let improvedText = "Désolé, une erreur est survenue lors de la génération.";
+                    if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
+                        // Extract text, which should be a markdown block
+                        let rawText = result.candidates[0].content.parts[0].text;
+                        // Clean up the markdown block delimiters for cleaner presentation
+                        improvedText = rawText.replace(/^```markdown\s*/, '').replace(/\s*```$/, '');
+                    }
+                    
+                    metaPromptOutput.textContent = improvedText;
+                    metaPromptOutput.classList.remove('hidden', 'bg-red-50', 'text-red-800');
+                    metaPromptOutput.classList.add('bg-green-50', 'text-green-800');
+
+                } catch (error) {
+                    console.error("Error calling Gemini API:", error);
+                    metaPromptOutput.textContent = "Erreur de connexion à l'API. Veuillez réessayer plus tard.";
+                    metaPromptOutput.classList.remove('hidden', 'bg-green-50', 'text-green-800');
+                    metaPromptOutput.classList.add('bg-red-50', 'text-red-800');
+                } finally {
+                    // --- Hide loading state ---
+                    btnText.textContent = "✨ Améliorer ce prompt";
+                    loadingSpinner.classList.add('hidden');
+                    metaPromptBtn.disabled = false;
+                }
+            });
+        }
+    });
+    </script>
+</body>
+</html>
