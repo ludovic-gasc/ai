@@ -422,7 +422,19 @@
             const btnText = document.getElementById('btn-text');
             
             copyPromptBtn.addEventListener('click', () => {
-                const textToCopy = metaPromptOutput.textContent;
+                const fullText = metaPromptOutput.textContent;
+                let textToCopy = fullText; 
+
+                const changelogSeparator = '--- CHANGELOG';
+                const separatorIndex = fullText.indexOf(changelogSeparator);
+                
+                if (separatorIndex !== -1) {
+                    let promptBlock = fullText.substring(0, separatorIndex).trim();
+                    textToCopy = promptBlock.replace(/^```markdown\s*/, '').replace(/\s*```$/, '').trim();
+                } else if (fullText.startsWith('```') && fullText.includes('```', 3)) {
+                     textToCopy = fullText.replace(/^```markdown\s*/, '').replace(/\s*```[\s\S]*$/, '').trim();
+                }
+
                 const tempTextArea = document.createElement('textarea');
                 tempTextArea.value = textToCopy;
                 document.body.appendChild(tempTextArea);
