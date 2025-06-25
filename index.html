@@ -15,7 +15,7 @@
         - Slide 2: Reframing the problem.
         - Slide 3: Interactive proof via the prompt comparator.
         - Slide 4: Interactive cards for key skills. Technique 2 is now "Examples & Counter-examples".
-        - Slide 5: Interactive simulation of meta-prompting, powered by a live Gemini API call with a more detailed meta-prompt.
+        - Slide 5: Interactive simulation of meta-prompting, powered by a live Gemini API call with a more detailed meta-prompt. Now includes a scrollable output and a copy button.
         - Slide 6: Conceptual diagram for Deep Research.
         - Slide 7: Strong, visual call to action.
         - Slide 8: A slide with clickable links to concrete examples, with corrected titles and icons.
@@ -211,7 +211,16 @@
                            <span id="btn-text">✨ Améliorer ce prompt</span>
                            <div id="loading-spinner" class="loader ml-3 hidden"></div>
                         </button>
-                        <div id="meta-prompt-output" class="mt-4 bg-green-50 text-green-800 p-4 rounded-lg text-left text-sm hidden whitespace-pre-wrap"></div>
+                        <div class="relative">
+                             <div id="meta-prompt-output" class="mt-4 bg-green-50 text-green-800 p-4 pr-10 rounded-lg text-left text-sm hidden whitespace-pre-wrap max-h-64 overflow-y-auto"></div>
+                             <button id="copy-prompt-btn" class="absolute top-6 right-2 p-1.5 rounded-full bg-stone-200 hover:bg-stone-300 hidden" title="Copier le prompt">
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard" viewBox="0 0 16 16">
+                                     <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                                     <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+                                 </svg>
+                             </button>
+                             <span id="copy-feedback" class="absolute top-6 right-10 text-xs bg-stone-800 text-white px-2 py-1 rounded-md hidden">Copié !</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -407,8 +416,25 @@
         if (metaPromptBtn) {
             const metaPromptInput = document.getElementById('meta-prompt-input');
             const metaPromptOutput = document.getElementById('meta-prompt-output');
+            const copyPromptBtn = document.getElementById('copy-prompt-btn');
+            const copyFeedback = document.getElementById('copy-feedback');
             const loadingSpinner = document.getElementById('loading-spinner');
             const btnText = document.getElementById('btn-text');
+            
+            copyPromptBtn.addEventListener('click', () => {
+                const textToCopy = metaPromptOutput.textContent;
+                const tempTextArea = document.createElement('textarea');
+                tempTextArea.value = textToCopy;
+                document.body.appendChild(tempTextArea);
+                tempTextArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempTextArea);
+                
+                copyFeedback.classList.remove('hidden');
+                setTimeout(() => {
+                    copyFeedback.classList.add('hidden');
+                }, 2000);
+            });
 
             metaPromptBtn.addEventListener('click', async () => {
                 if (!googleApiKey) {
@@ -421,6 +447,7 @@
                     metaPromptOutput.textContent = "Veuillez entrer un prompt à améliorer.";
                     metaPromptOutput.classList.remove('hidden', 'bg-green-50', 'text-green-800');
                     metaPromptOutput.classList.add('bg-red-50', 'text-red-800');
+                    copyPromptBtn.classList.add('hidden');
                     return;
                 }
 
@@ -429,33 +456,80 @@
                 loadingSpinner.classList.remove('hidden');
                 metaPromptBtn.disabled = true;
                 metaPromptOutput.classList.add('hidden');
+                copyPromptBtn.classList.add('hidden');
 
 
                 // --- Gemini API Call ---
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`;
 
-                const metaPrompt = `# MISSION : ARCHITECTE DE PROMPTS IA
+                const metaPrompt = `[PROMPT : ARCHITECTE DE PROMPTS IA - V3.4]
 
-## 1. Ton Rôle et Objectif
-Tu es un Architecte de Prompts expert (prompt-engineering). Ton unique fonction est de transformer une idée ou une demande simple en un prompt de haute qualité, structuré, détaillé et prêt à l'emploi pour une IA générative (comme GPT-4, Claude 3 ou Gemini).
+[RÔLE ET OBJECTIF]
+Tu es un Architecte de Prompts expert (prompt-engineering). Ta fonction unique et exclusive est de prendre une idée ou une demande utilisateur simple et de la transformer en un prompt de haute qualité, structuré, détaillé et versionné, prêt à l'emploi pour une IA générative (comme GPT-4, Claude 3 ou Gemini).
 
-## 2. Structure du Prompt à Générer
-Chaque prompt que tu conçois doit être une instruction complète et autonome. Il doit contenir les sections suivantes, clairement définies :
-- \`[RÔLE ET OBJECTIF]\` : Qui est l'IA et quel est son but principal ?
-- \`[CONTEXTE]\` : Informations cruciales que l'IA doit connaître pour accomplir sa tâche.
-- \`[INSTRUCTIONS DÉTAILLÉES]\` : Une séquence d'actions claires et logiques. Utilise des listes numérotées si nécessaire.
-- \`[FORMAT DE SORTIE]\` : Description exacte de la structure de la réponse (ex: Markdown, JSON, liste à puces, tableau).
-- \`[CONTRAINTES ET DIRECTIVES]\` : Ton à employer, éléments à exclure, longueur, langue, etc.
+[CONTEXTE]
+Tu travailles dans un processus itératif. Chaque demande de l'utilisateur peut être une nouvelle idée ou une modification d'un prompt que tu as déjà créé. Pour suivre les évolutions et maintenir la clarté, chaque prompt que tu génères doit être systématiquement versionné et accompagné d'un journal (changelog). Pour la V1.0, ce journal explique la conception initiale. Pour les versions ultérieures, il détaille les modifications apportées.
 
-## 3. Règle Fondamentale de Formatage de ta Réponse
-Ceci est la règle la plus importante et non négociable de notre interaction.
-Ta réponse doit contenir **EXCLUSIVEMENT** et **UNIQUEMENT** le prompt final que tu as créé.
-Ce prompt doit être encapsulé dans un bloc de code Markdown. Le bloc doit commencer par \`\`\`markdown et se terminer par \`\`\`.
-N'écris **ABSOLUMENT RIEN** avant \`\`\`markdown ou après \`\`\`. Pas de "Voici le prompt :", pas de "J'espère que cela vous convient.", rien. L'intégralité de ta réponse doit être le bloc de code.
+[INSTRUCTIONS DÉTAILLÉES]
+1.  **Analyse de la Demande** : Lis attentivement la demande de l'utilisateur pour en extraire l'objectif central et les contraintes clés.
+2.  **Gestion de Version** :
+    * **Nouvelle Idée** : S'il s'agit d'une nouvelle idée, assigne la version \`V1.0\`.
+    * **Mise à Jour** : Si l'utilisateur demande de modifier un prompt précédent, incrémente la version mineure (par exemple, V3.3 devient V3.4).
+3.  **Conception Structurée** : Construis le corps du prompt en utilisant impérativement la structure définie dans la section "Structure du Prompt à Générer".
+4.  **Rédaction du Contenu** : Remplis chaque section du prompt avec des instructions claires, précises et sans ambiguïté pour garantir que l'IA cible comprenne parfaitement sa mission.
+5.  **Rédaction du Changelog / Journal de Conception** :
+    * **Pour la V1.0** : Rédige un "Journal de Conception". Explique pourquoi le prompt a été créé, tes choix de structure, les informations clés incluses, et la logique derrière les instructions. Résume tes décisions de conception.
+    * **Pour les Mises à Jour (V1.1 et suivantes)** : Rédige un "Changelog". Liste chaque changement (Ajout, Modification, Suppression) et fournis une brève explication de la raison de ce changement.
+6.  **Génération de la Réponse Finale** : Assemble le prompt et le journal/changelog en respectant scrupuleusement le \`[FORMAT DE SORTIE]\`.
 
-## 4. Prise en compte de la demande
+[STRUCTURE DU PROMPT À GÉNÉRER]
+Chaque prompt que tu conçois doit être une instruction autonome, méticuleusement structurée pour guider l'IA. Utilise impérativement les sections suivantes, dans cet ordre :
+
+1.  **\`[PROMPT : <Titre Concis de la Mission> - V<M.m>]\`**
+    * **Description** : Un titre unique, descriptif et concis qui résume la mission. Il doit obligatoirement inclure un numéro de version (ex: V1.0, V1.1).
+    * **Amélioration** : Le titre sert d'identifiant rapide. Pense à une structure comme \`ACTION - SUJET - VERSION\` (ex: \`RÉDACTION - SCRIPTS YOUTUBE - V1.1\`).
+
+2.  **\`[RÔLE ET OBJECTIF]\`**
+    * **Description** : Définit la persona que l'IA doit adopter (\`Qui est l'IA ?\`) et sa finalité principale (\`Quel est son but ?\`).
+    * **Amélioration** : Commence par "Tu es un(e)..." pour assigner le rôle. L'objectif doit être une déclaration de mission claire et actionnable. C'est le "Pourquoi" de la mission.
+
+3.  **\`[CONTEXTE]\`**
+    * **Description** : Fournit les informations d'arrière-plan essentielles que l'IA doit connaître pour contextualiser la demande.
+    * **Amélioration** : Inclus ici le public cible, les définitions de termes clés, les hypothèses de départ, et toute information qui prévient les erreurs d'interprétation. C'est le "Savoir nécessaire" avant de commencer.
+
+4.  **\`[INSTRUCTIONS DÉTAILLÉES]\`**
+    * **Description** : Une séquence d'étapes logiques et ordonnées que l'IA doit suivre pour accomplir sa mission.
+    * **Amélioration** : Utilise une liste numérotée avec des verbes d'action à l'impératif (ex: 1. Analyse..., 2. Rédige..., 3. Formate...). Chaque étape doit être aussi atomique et claire que possible. C'est "l'Algorithme" de la mission.
+
+5.  **\`[FORMAT DE SORTIE]\`**
+    * **Description** : Décrit avec une précision absolue la structure de la réponse attendue.
+    * **Amélioration** : Ne laisse aucune place à l'interprétation. Spécifie le format (Markdown, JSON, XML), la structure (titres, listes, tableaux), et fournis **systématiquement** un exemple court mais complet pour illustrer.
+
+6.  **\`[CONTRAINTES ET DIRECTIVES]\`**
+    * **Description** : Énonce toutes les règles, limites et lignes directrices transversales à respecter.
+    * **Amélioration** : Liste les contraintes globales comme le ton (ex: professionnel, humoristique), le style d'écriture, la langue, les éléments à inclure ou à exclure impérativement, la longueur, etc. Ce sont les "Règles du jeu" qui s'appliquent en permanence.
+
+[FORMAT DE SORTIE]
+Ta réponse DOIT être structurée en deux parties distinctes et séquentielles : le prompt, puis le changelog.
+
+**Partie 1 : Le Prompt**
+- Le prompt complet que tu as conçu doit être encapsulé **EXCLUSIVEMENT** et **UNIQUEMENT** dans un bloc de code Markdown.
+- N'écris rien avant ou après ce bloc de code.
+
+**Partie 2 : Le Changelog / Journal de Conception**
+- **Immédiatement après** la fermeture du bloc de code de la Partie 1, sans ligne vide, insère le titre formaté ainsi : \`--- CHANGELOG V<M.m> ---\` (où \`<M.m>\` est la version actuelle).
+- Sous ce titre, fournis le contenu approprié.
+
+[CONTRAINTES ET DIRECTIVES]
+- **Respect du Format** : La structure de réponse en deux parties (bloc de code, suivi du journal/changelog) est impérative et non négociable.
+- **Aucun Marqueur Visuel** : Le corps du prompt généré doit toujours être "propre". Ne jamais inclure de marqueurs visuels (comme \`>\`) pour indiquer les changements. Le changelog est le seul endroit où les modifications sont détaillées.
+- **Autonomie du Prompt** : Le prompt généré dans le bloc de code doit rester une instruction complète et autonome.
+- **Clarté du Changelog** : Le journal en V1.0 doit expliquer la conception ; dans les versions suivantes, il doit lister les changements de manière concise et factuelle.
+
+[PRISE EN COMPTE DE LA DEMANDE]
 À partir de maintenant, prends la demande utilisateur suivante et applique rigoureusement toutes les règles ci-dessus pour générer le prompt final.
 
+[PROMPT A AMELIORER]
 Demande : "${userRequest}"`;
 
                 const payload = {
@@ -492,21 +566,20 @@ Demande : "${userRequest}"`;
                     
                     let improvedText = "Désolé, une erreur est survenue lors de la génération.";
                     if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
-                        // Extract text, which should be a markdown block
-                        let rawText = result.candidates[0].content.parts[0].text;
-                        // Clean up the markdown block delimiters for cleaner presentation
-                        improvedText = rawText.replace(/^```markdown\s*/, '').replace(/\s*```$/, '');
+                        improvedText = result.candidates[0].content.parts[0].text;
                     }
                     
                     metaPromptOutput.textContent = improvedText;
                     metaPromptOutput.classList.remove('hidden', 'bg-red-50', 'text-red-800');
                     metaPromptOutput.classList.add('bg-green-50', 'text-green-800');
+                    copyPromptBtn.classList.remove('hidden');
 
                 } catch (error) {
                     console.error("Error calling Gemini API:", error);
                     metaPromptOutput.textContent = error.message;
                     metaPromptOutput.classList.remove('hidden', 'bg-green-50', 'text-green-800');
                     metaPromptOutput.classList.add('bg-red-50', 'text-red-800');
+                    copyPromptBtn.classList.add('hidden');
                 } finally {
                     // --- Hide loading state ---
                     btnText.textContent = "✨ Améliorer ce prompt";
