@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Votre Planning de Vacances en Ardennes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Earthy Harmony -->
+    <!-- Application Structure Plan: The application is designed as a single-page dashboard. It starts with a high-level overview (weekly weather, budget chart, key locations) for quick insights. The main content is a series of interactive "accordion" cards, one for each day. This structure was chosen for usability: it allows users to see the big picture first, then dive into daily details by clicking, which is more engaging than scrolling a long static document. A sticky navigation bar provides quick jumps to any day, enhancing user flow. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Daily weather forecast -> Goal: Quick visual summary -> Viz/Presentation: Unicode icons (🌦️, ☀️) + temperature -> Interaction: None, for at-a-glance info -> Justification: More intuitive and faster to parse than text.
+        - Report Info: Activity costs -> Goal: Compare expenses -> Viz/Presentation: Chart.js Bar Chart -> Interaction: Hover tooltips show exact cost -> Justification: Visually highlights the most significant expenses, turning a list of numbers into actionable insight.
+        - Report Info: Daily schedule -> Goal: Organize detailed info without clutter -> Viz/Presentation: Accordion cards (HTML/JS) -> Interaction: Click to expand/collapse -> Justification: Keeps the main view clean and focused, allowing users to progressively disclose information as needed.
+        - Report Info: Locations -> Goal: Geographic context -> Viz/Presentation: Icon + Text list -> Interaction: None -> Justification: Provides simple geographical grouping without the complexity of an interactive map.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8;
+            color: #3f3f46;
+        }
+        .bg-custom-beige { background-color: #F5F1E9; }
+        .bg-custom-green { background-color: #D3E0D4; }
+        .text-custom-darkgreen { color: #3A5A40; }
+        .text-custom-brown { color: #795548; }
+        .border-custom-green { border-color: #A3B8A5; }
+        .accent-color { background-color: #A3B8A5; color: white; }
+        .accent-color-hover:hover { background-color: #8A9E8B; }
+        .day-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+            background-color: white;
+            overflow: hidden;
+            transition: all 0.3s ease-in-out;
+        }
+        .day-card-header {
+            cursor: pointer;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .day-card-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
+            padding: 0 1.5rem;
+        }
+        .day-card.open .day-card-content {
+            max-height: 1000px;
+            padding: 1rem 1.5rem 1.5rem;
+        }
+        .arrow-icon {
+            transition: transform 0.3s ease-in-out;
+        }
+        .day-card.open .arrow-icon {
+            transform: rotate(180deg);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="bg-white shadow-md py-4 px-6 text-center">
+        <h1 class="text-3xl font-bold text-custom-darkgreen">Vos Vacances en Famille</h1>
+        <p class="text-lg text-custom-brown">Programme du 3 au 8 Août 2025 | Stavelot, Ardennes</p>
+    </header>
+
+    <nav id="day-nav" class="sticky top-0 bg-white/80 backdrop-blur-sm shadow-sm z-10 py-2">
+        <div class="container mx-auto px-4">
+            <ul class="flex justify-center space-x-2 sm:space-x-4">
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-4 md:p-8">
+        
+        <section id="dashboard" class="mb-12">
+            <h2 class="text-2xl font-bold text-center mb-6 text-custom-darkgreen">Votre Semaine en un Clin d'Œil</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold mb-4 text-center text-custom-brown">Météo de la Semaine</h3>
+                    <div id="weather-overview" class="grid grid-cols-3 sm:grid-cols-6 gap-4 text-center">
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold mb-4 text-center text-custom-brown">Aperçu du Budget Activités</h3>
+                    <p class="text-center text-sm text-gray-600 mb-2">Une estimation des coûts pour vous aider à planifier.</p>
+                    <div class="chart-container">
+                        <canvas id="budgetChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="daily-plan">
+             <h2 class="text-2xl font-bold text-center mb-6 text-custom-darkgreen">Programme Détaillé</h2>
+             <div id="plan-container">
+             </div>
+        </section>
+
+    </main>
+
+    <footer class="text-center py-6 bg-custom-beige mt-8">
+        <p class="text-custom-brown">Passez d'excellentes vacances dans les Ardennes !</p>
+    </footer>
+
+    <script>
+        const vacationData = [
+            {
+                day: "Dimanche",
+                date: "3 août 2025",
+                weather: "Nuageux, averses",
+                temp: "19°C",
+                weatherIcon: "🌦️",
+                anchor: "dimanche",
+                activities: [
+                    {
+                        title: "Installation et découverte du domaine",
+                        description: "Après votre arrivée en fin de journée et votre installation, partez pour une petite exploration du Domaine du Long Pré. Repérez la piscine, la plaine de jeux et les autres infrastructures pour vous familiariser avec votre lieu de vacances.",
+                        location: "Sur place, au Domaine du Long Pré, Stavelot.",
+                        why: "Permet de prendre ses marques sans stress après le voyage et de se mettre immédiatement dans l'ambiance des vacances.",
+                        cost: 0,
+                        driveTime: "0 min"
+                    }
+                ]
+            },
+            {
+                day: "Lundi",
+                date: "4 août 2025",
+                weather: "Variable, éclaircies",
+                temp: "20°C",
+                weatherIcon: "🌤️",
+                anchor: "lundi",
+                activities: [
+                    {
+                        title: "L'Abbaye de Stavelot et ses trois musées",
+                        description: "Découvrez le joyau culturel de la région. Le site abrite le Musée historique, le Musée du Circuit de Spa-Francorchamps (avec simulateurs !) et le musée Guillaume Apollinaire. Un mélange parfait d'histoire et de fun.",
+                        location: "Cour de l'Abbaye 1, 4970 Stavelot.",
+                        why: "L'activité d'intérieur idéale. Le mix histoire/sports mécaniques captive tout le monde et crée un fil conducteur pour la semaine.",
+                        cost: 30.00,
+                        driveTime: "5 min",
+                        info: "Ouvert 10:00-18:00. Coût famille (1A, 2E): 30€."
+                    }
+                ]
+            },
+            {
+                day: "Mardi",
+                date: "5 août 2025",
+                weather: "Grand soleil",
+                temp: "24°C",
+                weatherIcon: "☀️",
+                anchor: "mardi",
+                activities: [
+                    {
+                        title: "Safari ardennais au Wild Park de Coo",
+                        description: "Embarquez à bord d'un petit train pour une visite de 40 minutes du Parc à Gibier. Observez cerfs, daims, sangliers et loups dans leur environnement naturel, en toute tranquillité.",
+                        location: "Petit Coo 4, 4970 Stavelot (Coo Adventure).",
+                        why: "Une activité nature relaxante et fascinante. Une expérience plus calme que le parc d'attractions voisin, centrée sur la faune locale.",
+                        cost: 30.00,
+                        driveTime: "10 min",
+                        info: "Départs 11:00-17:00. Coût famille: 30€. Paiement en espèces uniquement."
+                    }
+                ]
+            },
+            {
+                day: "Mercredi",
+                date: "6 août 2025",
+                weather: "Averses puis sec",
+                temp: "22°C",
+                weatherIcon: "🌦️",
+                anchor: "mercredi",
+                activities: [
+                    {
+                        title: "Visite du Château de Reinhardstein",
+                        description: "Plongez au cœur du Moyen Âge en visitant ce château reconstruit qui domine la vallée. La visite guidée (1h15) par un guide en costume d'époque vous fera découvrir la salle des chevaliers, les armures et les tapisseries.",
+                        location: "Chemin du Cheneux 50, 4950 Ovifat.",
+                        why: "Une aventure mémorable et très visuelle. L'ambiance médiévale et le guide passionné en font une alternative parfaite à un musée classique.",
+                        cost: 30.50,
+                        driveTime: "25 min",
+                        info: "Visites guidées 11:00-16:00. Coût famille: 30,50€."
+                    }
+                ]
+            },
+            {
+                day: "Jeudi",
+                date: "7 août 2025",
+                weather: "Ensoleillé",
+                temp: "22°C",
+                weatherIcon: "☀️",
+                anchor: "jeudi",
+                activities: [
+                    {
+                        title: "Dans les coulisses de la Formule 1",
+                        description: "Après le musée, vivez le circuit de l'intérieur ! Une visite guidée (1h30) vous emmène dans la salle de presse, les cabines des commentateurs, la salle de contrôle et sur le podium. Marchez dans les pas des plus grands pilotes.",
+                        location: "Route du Circuit 55, 4970 Francorchamps.",
+                        why: "La conclusion parfaite du thème 'sport auto'. Une expérience spéciale et mémorable avec l'accès à des zones normalement fermées au public.",
+                        cost: 31.00,
+                        driveTime: "15 min",
+                        info: "Réservation en ligne impérative. Coût famille: 31€."
+                    },
+                    {
+                        title: "Préparation des bagages",
+                        description: "De retour au domaine, profitez de la soirée pour préparer tranquillement les bagages. Cela vous libérera complètement la journée du lendemain pour les dernières activités.",
+                        location: "Sur place, au Domaine du Long Pré.",
+                        why: "Une bonne organisation est la clé d'un départ serein, vous permettant de maximiser votre temps de vacances jusqu'à la dernière minute.",
+                        cost: 0,
+                        driveTime: "0 min"
+                    }
+                ]
+            },
+            {
+                day: "Vendredi",
+                date: "8 août 2025",
+                weather: "Ensoleillé",
+                temp: "22°C",
+                weatherIcon: "☀️",
+                anchor: "vendredi",
+                activities: [
+                    {
+                        title: "Promenade du Point de Vue de Ster",
+                        description: "Après avoir rendu les clés, profitez d'une dernière bouffée d'air frais. Cette boucle facile de 4,7 km (env. 1h30) vous mène à un magnifique panorama sur la région, un parfait au revoir.",
+                        location: "Départ près du village de Ster (Coo).",
+                        why: "Une excellente façon de conclure la partie 'nature' de vos vacances avec une activité vivifiante mais tranquille avant de prendre la route.",
+                        cost: 0,
+                        driveTime: "10 min"
+                    },
+                    {
+                        title: "Découverte du Domaine de la Fraineuse à Spa",
+                        description: "Sur le chemin du retour, faites une halte à Spa pour découvrir ce vaste domaine boisé de 27 hectares où trône un charmant château. Une dernière balade tranquille pour admirer l'architecture.",
+                        location: "Avenue Amédée Hesse 41A, 4900 Spa.",
+                        why: "Répond à la curiosité de votre fils et offre une dernière étape intéressante et reposante avant de conclure vos vacances.",
+                        cost: 0,
+                        driveTime: "20 min"
+                    }
+                ]
+            }
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const planContainer = document.getElementById('plan-container');
+            const weatherContainer = document.getElementById('weather-overview');
+            const navContainer = document.querySelector('#day-nav ul');
+
+            vacationData.forEach(item => {
+                const weatherHTML = `
+                    <div class="flex flex-col items-center">
+                        <span class="text-sm font-medium text-gray-600">${item.day.substring(0,3)}.</span>
+                        <span class="text-3xl my-1">${item.weatherIcon}</span>
+                        <span class="text-sm font-semibold text-custom-brown">${item.temp}</span>
+                    </div>
+                `;
+                weatherContainer.innerHTML += weatherHTML;
+
+                const navLinkHTML = `
+                    <li>
+                        <a href="#${item.anchor}" class="px-3 py-2 text-sm sm:text-base font-medium text-custom-darkgreen rounded-md accent-color-hover transition-colors duration-300">${item.day}</a>
+                    </li>
+                `;
+                navContainer.innerHTML += navLinkHTML;
+
+                let activitiesHTML = '';
+                item.activities.forEach(activity => {
+                    activitiesHTML += `
+                        <div class="mb-6 pb-4 border-b border-gray-200 last:border-b-0 last:pb-0 last:mb-0">
+                            <h4 class="text-lg font-bold text-custom-darkgreen">${activity.title}</h4>
+                            <p class="mt-2 text-gray-700">${activity.description}</p>
+                            <p class="mt-3 text-sm text-gray-600"><strong class="text-custom-brown">💡 Pourquoi ce choix ?</strong> ${activity.why}</p>
+                            <div class="mt-3 text-sm bg-custom-beige p-3 rounded-lg">
+                                <p><strong class="font-semibold">📍 Lieu :</strong> ${activity.location}</p>
+                                <p class="mt-1"><strong class="font-semibold">🚗 Trajet :</strong> ${activity.driveTime} depuis le domaine</p>
+                                ${activity.info ? `<p class="mt-1"><strong class="font-semibold">💶 Infos :</strong> ${activity.info}</p>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                const dayCardHTML = `
+                    <div class="day-card" id="${item.anchor}">
+                        <div class="day-card-header bg-gray-50 hover:bg-gray-100 transition-colors">
+                            <div>
+                                <h3 class="text-xl font-bold text-custom-darkgreen">${item.day}</h3>
+                                <p class="text-sm text-gray-500">${item.date} | Météo: ${item.weather}, ${item.temp}</p>
+                            </div>
+                            <span class="arrow-icon text-2xl text-gray-400">▼</span>
+                        </div>
+                        <div class="day-card-content">
+                            ${activitiesHTML}
+                        </div>
+                    </div>
+                `;
+                planContainer.innerHTML += dayCardHTML;
+            });
+
+            const dayCards = document.querySelectorAll('.day-card');
+            dayCards.forEach(card => {
+                card.querySelector('.day-card-header').addEventListener('click', () => {
+                    card.classList.toggle('open');
+                });
+            });
+            
+            if (dayCards.length > 0) {
+                dayCards[0].classList.add('open');
+            }
+
+            document.querySelectorAll('#day-nav a').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        if (!targetElement.classList.contains('open')) {
+                            targetElement.classList.add('open');
+                        }
+                    }
+                });
+            });
+
+            const budgetCtx = document.getElementById('budgetChart').getContext('2d');
+            const activityCosts = vacationData.flatMap(d => d.activities).filter(a => a.cost > 0);
+            new Chart(budgetCtx, {
+                type: 'bar',
+                data: {
+                    labels: activityCosts.map(a => a.title),
+                    datasets: [{
+                        label: 'Coût de l\'activité (€)',
+                        data: activityCosts.map(a => a.cost),
+                        backgroundColor: '#A3B8A5',
+                        borderColor: '#8A9E8B',
+                        borderWidth: 1,
+                        borderRadius: 5,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Coût en Euros (€)'
+                            }
+                        },
+                        y: {
+                           ticks: {
+                                autoSkip: false,
+                                callback: function(value, index, values) {
+                                    const label = this.getLabelForValue(value);
+                                    return label.length > 30 ? label.substring(0, 30) + '...' : label;
+                                }
+                           }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` Coût: ${context.raw.toFixed(2)} €`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
