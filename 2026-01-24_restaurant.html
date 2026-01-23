@@ -3,439 +3,382 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analyse Restauration : L'Os à Moelle</title>
+    <title>Options Restauration - L'Os à Moelle</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Tailwind CSS (via CDN for styling speed) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0"></script>
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=Lato:wght@400;700&display=swap');
-
-        :root {
-            --bg-color: #F9FAFB;
-            --card-bg: #FFFFFF;
-            --primary: #9F1239; /* Rose/Red representing the velvet of a cabaret */
-            --secondary: #4B5563;
-        }
-
-        body {
-            font-family: 'Lato', sans-serif;
-            background-color: var(--bg-color);
-            color: #1F2937;
-        }
-
-        h1, h2, h3, .serif-font {
-            font-family: 'Crimson Pro', serif;
-        }
-
-        /* Chart Container Styling */
-        .chart-container {
-            position: relative;
+        /* Custom Map Styles */
+        #map {
+            height: 400px;
             width: 100%;
-            max-width: 100%;
-            height: 320px;
-            max-height: 400px;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            z-index: 1;
         }
 
-        .status-badge {
-            font-size: 0.75rem;
-            font-weight: 700;
-            padding: 0.25rem 0.5rem;
-            border-radius: 9999px;
-            text-transform: uppercase;
+        /* Card Interactions */
+        .restaurant-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .restaurant-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
 
-        .status-optimal { background-color: #D1FAE5; color: #065F46; border: 1px solid #34D399; }
-        .status-alternative { background-color: #DBEAFE; color: #1E40AF; border: 1px solid #60A5FA; }
-        .status-warning { background-color: #FEF3C7; color: #92400E; border: 1px solid #F59E0B; }
-        .status-alert { background-color: #FEE2E2; color: #991B1B; border: 1px solid #F87171; }
-
-        .card-selected {
-            ring: 2px;
-            ring-color: #9F1239;
-            background-color: #FFF1F2;
+        /* Custom Leaflet Icons */
+        .custom-div-icon {
+            background: transparent;
+            border: none;
+        }
+        .marker-pin {
+            width: 30px;
+            height: 30px;
+            border-radius: 50% 50% 50% 0;
+            background: #c0392b;
+            position: absolute;
+            transform: rotate(-45deg);
+            left: 50%;
+            top: 50%;
+            margin: -15px 0 0 -15px;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.3);
+        }
+        .marker-pin::after {
+            content: '';
+            width: 14px;
+            height: 14px;
+            margin: 8px 0 0 8px;
+            background: #fff;
+            position: absolute;
+            border-radius: 50%;
         }
     </style>
-    <!-- Chosen Palette: "Cabaret Chic" - Deep Red (#9F1239) for the venue, Slate Gray (#4B5563) for text, Clean White for cards. -->
-    <!-- Application Structure Plan:
-         1. Header: Explicit reference to the "Étude Stratégique" and L'Os à Moelle (153 Av Emile Max).
-         2. Executive Summary: Brief recall of the constraints (Sat 18h, Group 7+).
-         3. Dashboard (2 cols):
-            - Viz 1: "Distance vs Fiabilité". Scatter plot mapping distance from venue (Y) against Report Suitability Score (X).
-            - Viz 2: "Matrice Budget/Note". Bubble chart from report data table.
-         4. List Section: Detailed cards with specific excerpts from the report (e.g., "Perle Blanche oysters", "Sharing Food").
-            - Includes specific warnings (La Cueva opening time, Le Max cash only).
-    -->
-    <!-- Visualization & Content Choices:
-         - Data strictly from the uploaded report text.
-         - Viz 1: Chart.js Scatter. Goal: Visualize the trade-off between walking distance and the report's recommendation level.
-         - Viz 2: Chart.js Bubble. Goal: Compare Budget vs Rating vs Capacity.
-         - Content: Descriptions use specific dish names and prices cited in the report (e.g., "Double Entrecôte Donald Russell").
-         - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used.
-    -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
 </head>
-<body class="flex flex-col min-h-screen">
+<body class="bg-gray-50 text-slate-800 font-sans">
 
     <!-- Header -->
-    <header class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-20">
-        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+    <header class="bg-slate-800 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
             <div>
-                <h1 class="text-2xl font-bold text-rose-900 leading-none">Rapport : Dîner Groupe Schaerbeek</h1>
-                <p class="text-sm text-gray-500 mt-1 serif-font italic">Destination : L'Os à Moelle (153 Av. Emile Max)</p>
+                <h1 class="text-xl font-bold flex items-center gap-2">
+                    <i class="fas fa-theater-masks text-yellow-500"></i> Planif' Os à Moelle
+                </h1>
+                <p class="text-xs text-slate-300 mt-1">Cible : Spectacle 20h30 | Groupe 7+ pers.</p>
             </div>
-            <div class="hidden md:block text-right">
-                <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Configuration</div>
-                <div class="text-sm font-semibold text-gray-800">Samedi 18h00 • 7+ Personnes</div>
-            </div>
+            <button onclick="window.print()" class="hidden sm:block bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded text-sm transition">
+                <i class="fas fa-print"></i> Imprimer
+            </button>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-grow w-full max-w-6xl mx-auto px-4 py-6 space-y-6">
-
-        <!-- Context Banner -->
-        <div class="bg-rose-50 border-l-4 border-rose-700 p-4 rounded-r shadow-sm">
-            <div class="flex items-start">
-                <div class="flex-shrink-0">
-                    <span class="text-2xl">🎭</span>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        
+        <!-- Top Section: Map & Legend -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Map Column -->
+            <div class="lg:col-span-2 relative">
+                <div id="map"></div>
+                <!-- Simple floating legend on map -->
+                <div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur p-3 rounded shadow-lg text-xs z-[400]">
+                    <div class="flex items-center gap-2 mb-1"><span class="w-3 h-3 rounded-full bg-black border-2 border-white"></span> L'Os à Moelle</div>
+                    <div class="flex items-center gap-2 mb-1"><span class="w-3 h-3 rounded-full bg-green-500 border border-white"></span> Recommandé</div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500 border border-white"></span> Risqué / Loin</div>
                 </div>
-                <div class="ml-3">
-                    <h3 class="text-lg font-bold text-rose-900 serif-font">Synthèse de l'Étude</h3>
-                    <p class="text-sm text-rose-800 mt-1">
-                        Le rapport identifie un "écosystème" de 5 établissements clés. 
-                        <strong>Le défi majeur :</strong> Trouver un lieu capable d'accueillir 7 personnes dès 18h00 pour garantir la fin du service avant le spectacle (20h30).
-                        <span class="font-bold underline">Le Saint-Georges</span> est identifié comme l'option optimale pour la logistique.
-                    </p>
+            </div>
+
+            <!-- Summary / Filters Column -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center">
+                <h2 class="text-lg font-bold mb-4 text-slate-800">Critères de décision</h2>
+                <div class="space-y-4">
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 bg-blue-100 text-blue-600 rounded-lg"><i class="fas fa-clock"></i></div>
+                        <div>
+                            <p class="font-semibold text-sm">Timing Serré</p>
+                            <p class="text-xs text-gray-500">Début repas 18h00 impératif pour être au spectacle à 20h30.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 bg-purple-100 text-purple-600 rounded-lg"><i class="fas fa-users"></i></div>
+                        <div>
+                            <p class="font-semibold text-sm">Groupe 7+ Personnes</p>
+                            <p class="text-xs text-gray-500">Privilégier les lieux spacieux (Saint-Georges) aux lieux exigus (Chardin).</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <div class="text-center">
+                            <span class="text-3xl font-bold text-green-600">2</span>
+                            <span class="text-sm text-gray-500 block">Options Idéales</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            <!-- LEFT COLUMN: Charts -->
-            <div class="space-y-6">
-                
-                <!-- Chart 1: Strategic Position -->
-                <div class="bg-white p-5 rounded-lg shadow border border-gray-200">
-                    <div class="mb-4 border-b border-gray-100 pb-2">
-                        <h3 class="text-lg font-bold text-gray-800 serif-font">📍 Position Stratégique</h3>
-                        <p class="text-xs text-gray-500">Distance de marche vs Note Globale du Rapport</p>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="strategyChart"></canvas>
-                    </div>
-                    <p class="text-xs text-center text-gray-400 mt-2 italic">Proche de l'axe Y = Plus près de l'Os à Moelle</p>
-                </div>
+        <!-- Filter Tabs -->
+        <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+            <button class="px-4 py-2 bg-slate-800 text-white rounded-full text-sm font-medium shadow-sm whitespace-nowrap" onclick="filterCards('all')">Tous</button>
+            <button class="px-4 py-2 bg-white hover:bg-gray-50 text-slate-700 border border-gray-200 rounded-full text-sm font-medium whitespace-nowrap transition" onclick="filterCards('recommended')">✅ Recommandés</button>
+            <button class="px-4 py-2 bg-white hover:bg-gray-50 text-slate-700 border border-gray-200 rounded-full text-sm font-medium whitespace-nowrap transition" onclick="filterCards('caution')">⚠️ Avec réserve</button>
+        </div>
 
-                <!-- Chart 2: Budget Analysis -->
-                <div class="bg-white p-5 rounded-lg shadow border border-gray-200">
-                    <div class="mb-4 border-b border-gray-100 pb-2">
-                        <h3 class="text-lg font-bold text-gray-800 serif-font">💰 Analyse Budget & Qualité</h3>
-                        <p class="text-xs text-gray-500">Budget Moyen vs Note Clients (Taille = Capacité Groupe)</p>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="budgetChart"></canvas>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- RIGHT COLUMN: Detailed List -->
-            <div class="flex flex-col h-full bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-                <div class="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-                    <h3 class="font-bold text-gray-700 uppercase text-sm tracking-wide">Sélection du Rapport</h3>
-                    <span class="text-xs bg-white px-2 py-1 border rounded text-gray-500">Trier par: Pertinence</span>
-                </div>
-                
-                <div class="overflow-y-auto p-4 space-y-4 flex-1" style="max-height: 800px;">
-                    <!-- JS will populate cards here -->
-                    <div id="cards-container" class="space-y-4"></div>
-                </div>
-            </div>
-
+        <!-- Restaurant Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="cards-container">
+            <!-- Cards will be injected here via JS -->
         </div>
 
     </main>
 
+    <footer class="bg-slate-100 mt-12 py-8 border-t border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
+            <p>Application générée pour analyse logistique - Données basées sur le rapport fourni.</p>
+        </div>
+    </footer>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
     <script>
-        // DATA EXTRACTED FROM THE REPORT
-        // Reference: L'Os à Moelle (153 Av Emile Max)
-        // Distances cited in report
-        
-        const reportData = [
+        // --- DATA ---
+        // Coordinates for Av Emile Max 153 (L'Os à Moelle) and surroundings
+        const centralPoint = { lat: 50.8505, lng: 4.3975, name: "L'Os à Moelle" }; 
+
+        const restaurants = [
             {
                 id: 1,
                 name: "Le Saint-Georges",
-                category: "Brasserie Bourgeoise",
-                address: "Av. Emile Max 81",
-                distance: 600, // meters
-                time: "6 min",
-                openingSat: "18h00",
-                budgetMin: 45,
-                budgetMax: 60,
-                rating: 9.0,
-                capacityComment: "Excellente (Banquets, 82 couverts)",
-                capacityScore: 90, // For bubble size
-                status: "optimal",
-                badgeText: "CHOIX OPTIMAL",
-                desc: "L'archétype de la brasserie. Gardien des traditions. Idéal pour groupes (larges tables).",
-                highlights: "Huîtres Perle Blanche, Homard (60€), Croquettes crevettes (24€), Gibier en saison.",
-                alert: null
+                type: "Brasserie / Fruits de Mer",
+                lat: 50.8495, 
+                lng: 4.3945,
+                rating: "9.0",
+                price: "€€€",
+                walkTime: "6 min",
+                opening: "18h00",
+                status: "recommended", // recommended, caution, warning
+                tags: ["Groupe OK", "Service Rapide", "Classique"],
+                desc: "L'option la plus sûre. Espace suffisant pour 7+, service rodé, cuisine de brasserie consensuelle.",
+                color: "green"
             },
             {
                 id: 2,
                 name: "Chez Tom",
-                category: "Bistronomie / Sharing",
-                address: "Av. Emile Max 85",
-                distance: 580,
-                time: "5 min",
-                openingSat: "18h00",
-                budgetMin: 30,
-                budgetMax: 40,
-                rating: 8.9,
-                capacityComment: "Très Bonne (Concept Sharing)",
-                capacityScore: 70,
-                status: "alternative",
-                badgeText: "ALTERNATIVE CONVIVIALE",
-                desc: "Cuisine de saison décontractée. Concept de plats à partager parfait pour la cohésion du groupe.",
-                highlights: "Baos bœuf confit (14€), Os à moelle rôti (Clin d'œil !), Pavé Hereford.",
-                alert: null
+                type: "Bistronomie / Sharing",
+                lat: 50.8496, 
+                lng: 4.3944,
+                rating: "8.9",
+                price: "€€",
+                walkTime: "5 min",
+                opening: "18h00",
+                status: "recommended",
+                tags: ["Moderne", "Convivial", "Vins"],
+                desc: "Excellent pour l'ambiance. Formule 'à partager' idéale pour briser la glace avant le spectacle.",
+                color: "green"
             },
             {
                 id: 3,
-                name: "Chardin",
-                category: "Burger Gourmet",
-                address: "Av. Emile Max 91",
-                distance: 550,
-                time: "5 min",
-                openingSat: "18h00",
-                budgetMin: 20,
-                budgetMax: 30,
-                rating: 9.2,
-                capacityComment: "Bonne (Attention: Réserver!)",
-                capacityScore: 50,
-                status: "alternative",
-                badgeText: "OPTION DÉCONTRACTÉE",
-                desc: "Pas un snack, mais un vrai resto burger. Angus 120g et pains boulangers.",
-                highlights: "Burger Truffe (18€), Steak végétarien betterave. Frites 'véritables'.",
-                alert: "Attention: Espace parfois exigu et bruyant. Réserver spécifiquement pour 7."
+                name: "Stella d'Italia",
+                type: "Italien Gastronomique",
+                lat: 50.8530, 
+                lng: 4.3890,
+                rating: "9.8",
+                price: "€€",
+                walkTime: "11 min",
+                opening: "18h00",
+                status: "recommended",
+                tags: ["Top Chef", "Qualité", "Marche requise"],
+                desc: "La meilleure cuisine (note 9.8), mais nécessite une marche plus longue. Timing serré.",
+                color: "blue" // Blue distinct for high quality but distance
             },
             {
                 id: 4,
-                name: "Stella d'Italia",
-                category: "Italien Raffiné",
-                address: "Av. Dailly 251",
-                distance: 850,
-                time: "11 min",
-                openingSat: "18h00",
-                budgetMin: 30,
-                budgetMax: 45,
-                rating: 9.8,
-                capacityComment: "Excellente",
-                capacityScore: 80,
-                status: "alternative",
-                badgeText: "TOP QUALITÉ",
-                desc: "Le mieux noté du rapport. Cuisine italienne sans compromis, un peu plus loin à pied.",
-                highlights: "Paccheri polpo (22.5€), Escalope Valdostana. Pizza 'Stella' bords farcis.",
-                alert: "Logistique: Compter 10-12 min de marche retour vers le cabaret."
+                name: "Chardin",
+                type: "Burger Gourmet",
+                lat: 50.8498, 
+                lng: 4.3942,
+                rating: "9.2",
+                price: "€€",
+                walkTime: "5 min",
+                opening: "18h00",
+                status: "caution",
+                tags: ["Exigu", "Casual", "Viande Angus"],
+                desc: "Très bon, mais salle petite. Risqué pour 7 personnes sans réservation très précoce.",
+                color: "orange"
             },
             {
                 id: 5,
                 name: "La Cueva de Castilla",
-                category: "Espagnol / Tapas",
-                address: "Place Colignon 8",
-                distance: 900,
-                time: "12 min",
-                openingSat: "19h00",
-                budgetMin: 35,
-                budgetMax: 45,
-                rating: 9.2,
-                capacityComment: "Bonne",
-                capacityScore: 60,
+                type: "Espagnol / Tapas",
+                lat: 50.8640, 
+                lng: 4.3850,
+                rating: "9.2",
+                price: "€€€",
+                walkTime: "15+ min",
+                opening: "19h00",
                 status: "warning",
-                badgeText: "RISQUE HORAIRE",
-                desc: "Excellente référence mais horaire problématique pour un spectacle à 20h30.",
-                highlights: "Tapas variés, Paella.",
-                alert: "🚨 OUVRE À 19H00. Créneau trop court pour un groupe de 7 avant spectacle."
+                tags: ["Ouverture Tardive", "Loin"],
+                desc: "Ouverture à 19h00 = Impossible de manger sereinement avant le spectacle de 20h30.",
+                color: "red"
             },
             {
                 id: 6,
                 name: "Le Max",
-                category: "Italien / Sarde",
-                address: "Av. Emile Max 87",
-                distance: 570,
-                time: "5 min",
-                openingSat: "?",
-                budgetMin: 30,
-                budgetMax: 40,
-                rating: 0, // No rating in table, status uncertain
-                capacityComment: "Incertaine",
-                capacityScore: 40,
-                status: "alert",
-                badgeText: "À VÉRIFIER",
-                desc: "Voisin direct, mais statut contradictoire dans les bases de données.",
-                highlights: "Cuisine sarde.",
-                alert: "🚨 CASH ONLY. Horaires incertains. Appeler avant (Solution de repli uniquement)."
+                type: "Italien / Sarde",
+                lat: 50.8497, 
+                lng: 4.3943,
+                rating: "?",
+                price: "Cash",
+                walkTime: "1 min",
+                opening: "?",
+                status: "warning",
+                tags: ["Incertain", "Cash Only"],
+                desc: "Trop d'inconnues (horaires, ouverture réelle). À éviter pour un événement organisé.",
+                color: "red"
             }
         ];
 
-        function renderApp() {
-            renderCards();
-            renderCharts();
-        }
+        // --- INIT MAP ---
+        const map = L.map('map', {
+            zoomControl: false // Move zoom control if needed
+        }).setView([centralPoint.lat, centralPoint.lng], 15);
 
-        function renderCards() {
-            const container = document.getElementById('cards-container');
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        // --- MARKERS ---
+        const markers = {};
+
+        // Target Marker (L'Os à Moelle)
+        const targetIcon = L.divIcon({
+            className: 'custom-div-icon',
+            html: `<div style="background:black; width:16px; height:16px; border:2px solid white; border-radius:50%; box-shadow:0 2px 4px rgba(0,0,0,0.5);"></div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+        });
+        L.marker([centralPoint.lat, centralPoint.lng], {icon: targetIcon}).addTo(map).bindPopup("<b>L'Os à Moelle</b><br>Spectacle 20h30");
+
+        // Restaurant Markers
+        restaurants.forEach(resto => {
+            let colorHex;
+            switch(resto.color) {
+                case 'green': colorHex = '#10b981'; break;
+                case 'blue': colorHex = '#3b82f6'; break;
+                case 'orange': colorHex = '#f59e0b'; break;
+                case 'red': colorHex = '#ef4444'; break;
+                default: colorHex = '#64748b';
+            }
+
+            const restoIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div style="background:${colorHex}; width:14px; height:14px; border:2px solid white; border-radius:50%; box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [14, 14],
+                iconAnchor: [7, 7]
+            });
+
+            const marker = L.marker([resto.lat, resto.lng], {icon: restoIcon}).addTo(map);
+            
+            // Marker Popup Content
+            const popupContent = `
+                <div class="text-sm font-sans">
+                    <strong class="text-slate-800 block mb-1">${resto.name}</strong>
+                    <span class="text-xs text-slate-500">${resto.walkTime} à pied</span>
+                </div>
+            `;
+            marker.bindPopup(popupContent);
+            
+            markers[resto.id] = marker;
+        });
+
+
+        // --- CARD GENERATION ---
+        const container = document.getElementById('cards-container');
+
+        function renderCards(filterType) {
             container.innerHTML = '';
+            
+            restaurants.forEach(resto => {
+                if (filterType !== 'all' && resto.status !== filterType && !(filterType === 'caution' && resto.status === 'warning')) return;
 
-            reportData.forEach(item => {
-                const card = document.createElement('div');
-                card.className = `p-4 border rounded-lg transition-colors hover:shadow-md bg-white cursor-pointer group`;
-                card.onclick = () => highlightOnChart(item.id);
-                card.id = `card-${item.id}`;
-
-                let statusClass = '';
-                if(item.status === 'optimal') statusClass = 'status-optimal';
-                else if(item.status === 'alternative') statusClass = 'status-alternative';
-                else if(item.status === 'warning') statusClass = 'status-warning';
-                else statusClass = 'status-alert';
-
-                // Alert Box if exists
-                let alertHtml = '';
-                if (item.alert) {
-                    alertHtml = `
-                        <div class="mt-3 p-2 bg-red-50 border border-red-100 rounded text-xs text-red-700 flex items-start">
-                            <span class="mr-1">⚠️</span> ${item.alert}
-                        </div>
-                    `;
+                // Determine border color based on status
+                let borderClass = 'border-l-4 border-gray-300';
+                let statusBadge = '';
+                
+                if (resto.status === 'recommended') {
+                    borderClass = 'border-l-4 border-emerald-500';
+                    statusBadge = '<span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded font-medium">Recommandé</span>';
+                } else if (resto.status === 'caution') {
+                    borderClass = 'border-l-4 border-amber-400';
+                    statusBadge = '<span class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded font-medium">Attention</span>';
+                } else if (resto.status === 'warning') {
+                    borderClass = 'border-l-4 border-red-500';
+                    statusBadge = '<span class="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded font-medium">Risqué</span>';
                 }
 
+                const card = document.createElement('div');
+                card.className = `restaurant-card bg-white rounded-lg p-5 shadow-sm border border-gray-100 ${borderClass} relative overflow-hidden`;
+                card.onclick = () => focusOnResto(resto.id, resto.lat, resto.lng);
+
+                // Rating Badge
+                const ratingBadge = resto.rating !== '?' 
+                    ? `<div class="absolute top-4 right-4 bg-slate-800 text-white text-xs font-bold px-2 py-1 rounded shadow">${resto.rating}/10</div>`
+                    : '';
+
+                // Tags HTML
+                const tagsHtml = resto.tags.map(tag => `<span class="text-[10px] uppercase tracking-wide bg-gray-100 text-gray-600 px-2 py-1 rounded">${tag}</span>`).join('');
+
                 card.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <span class="${statusClass} status-badge mb-1 inline-block">${item.badgeText}</span>
-                            <h4 class="text-lg font-bold text-gray-800 group-hover:text-rose-700">${item.name}</h4>
-                            <p class="text-xs text-gray-500 font-mono">${item.category} • ${item.distance}m (${item.time})</p>
-                        </div>
-                        <div class="text-right">
-                            <div class="font-bold text-lg text-rose-900">${item.rating > 0 ? item.rating + '/10' : '?'}</div>
-                            <div class="text-xs text-gray-400">Note Rapport</div>
-                        </div>
-                    </div>
+                    ${ratingBadge}
+                    <div class="mb-1">${statusBadge}</div>
+                    <h3 class="text-lg font-bold text-slate-800 leading-tight mb-1">${resto.name}</h3>
+                    <p class="text-xs text-slate-500 uppercase font-semibold mb-3">${resto.type}</p>
                     
-                    <p class="text-sm text-gray-600 mb-2 italic border-l-2 border-gray-200 pl-2">
-                        "${item.desc}"
-                    </p>
-
-                    <div class="text-xs text-gray-500 mb-2">
-                        <strong class="text-gray-700">À la carte :</strong> ${item.highlights}
+                    <div class="flex items-center gap-4 text-sm text-gray-600 mb-3">
+                        <div class="flex items-center gap-1.5"><i class="fas fa-walking text-slate-400"></i> ${resto.walkTime}</div>
+                        <div class="flex items-center gap-1.5"><i class="fas fa-euro-sign text-slate-400"></i> ${resto.price}</div>
+                        <div class="flex items-center gap-1.5"><i class="far fa-clock text-slate-400"></i> ${resto.opening}</div>
                     </div>
 
-                    <div class="flex justify-between items-center text-xs mt-3 pt-2 border-t border-gray-100 text-gray-500">
-                        <span>🕒 Samedi : ${item.openingSat}</span>
-                        <span>💶 ~${item.budgetMin}-${item.budgetMax}€</span>
-                    </div>
+                    <p class="text-sm text-gray-600 italic mb-4 line-clamp-2">${resto.desc}</p>
 
-                    ${alertHtml}
+                    <div class="flex flex-wrap gap-2 mt-auto">
+                        ${tagsHtml}
+                    </div>
                 `;
                 container.appendChild(card);
             });
         }
 
-        let strategyChartVal;
-        let budgetChartVal;
-
-        function renderCharts() {
-            const ctxStrategy = document.getElementById('strategyChart').getContext('2d');
-            const ctxBudget = document.getElementById('budgetChart').getContext('2d');
-
-            // --- Chart 1: Strategy (Distance vs Rating) ---
-            // We verify data to avoid plotting "Le Max" with 0 rating weirdly
-            const validForPlot = reportData.filter(d => d.rating > 0);
-
-            strategyChartVal = new Chart(ctxStrategy, {
-                type: 'scatter',
-                data: {
-                    datasets: [{
-                        label: 'Restaurants',
-                        data: validForPlot.map(d => ({
-                            x: d.distance, // Distance on X
-                            y: d.rating,   // Rating on Y
-                            id: d.id
-                        })),
-                        backgroundColor: (ctx) => {
-                            const id = ctx.raw?.id;
-                            const item = reportData.find(r => r.id === id);
-                            if (item?.status === 'optimal') return '#059669'; // Green
-                            if (item?.status === 'warning') return '#D97706'; // Orange
-                            return '#9F1239'; // Red/Rose default
-                        },
-                        pointRadius: 8,
-                        pointHoverRadius: 10
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => {
-                                    const d = reportData.find(r => r.id === ctx.raw.id);
-                                    return `${d.name}: ${d.distance}m - Note ${d.rating}`;
-                                }
-                            }
-                        },
-                        annotation: {
-                            annotations: {
-                                line1: {
-                                    type: 'line',
-                                    xMin: 600,
-                                    xMax: 600,
-                                    borderColor: 'rgba(0,0,0,0.1)',
-                                    borderWidth: 1,
-                                    label: { content: 'Limite Confort (600m)', display: true }
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: { 
-                            title: { display: true, text: 'Distance de l\'Os à Moelle (mètres)' },
-                            min: 400, 
-                            max: 1000,
-                            reverse: false // Further is to the right
-                        },
-                        y: { 
-                            title: { display: true, text: 'Note Globale (/10)' },
-                            min: 8.5, 
-                            max: 10 
-                        }
-                    },
-                    onClick: (e, els) => {
-                        if(els.length) scrollList(validForPlot[els[0].index].id);
-                    }
-                }
+        // --- INTERACTIONS ---
+        function focusOnResto(id, lat, lng) {
+            // Zoom map
+            map.flyTo([lat, lng], 17, {
+                animate: true,
+                duration: 1.5
             });
+            // Open popup
+            if(markers[id]) {
+                markers[id].openPopup();
+            }
+            // Highlight card
+            document.querySelectorAll('.restaurant-card').forEach(c => c.classList.remove('ring-2', 'ring-slate-400'));
+            // In a real app we'd target the specific card element, for this demo the visual feedback of map is primary
+        }
 
-            // --- Chart 2: Budget Bubble ---
-            budgetChartVal = new Chart(ctxBudget, {
-                type: 'bubble',
-                data: {
-                    datasets: [{
-                        label: 'Restaurants',
-                        data: validForPlot.map(d => ({
-                            x: (d.budgetMin + d.budgetMax) / 2,
-                            y: d.rating,
-                            r: d.capacityScore / 3, // Size based on group capacity
-                            id: d.id
-                        })),
-                        backgroundColor: 'rgba(159, 18, 57, 0.6)',
-                        borderColor: '#9F1239',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    ma
+        window.filterCards = function(type) {
+            renderCards(type);
+        }
+
+        // Initial Render
+        renderCards('all');
+
+    </script>
+</body>
+</html>
