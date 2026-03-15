@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyse Randonnée : Driestenbroekestraat (Mars 2026)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Chosen Palette: Tactical Field (Slate background, Emerald for Excellence, Amber for warnings, Earthy tones) -->
+    <!-- Application Structure Plan: 
+         A tactical dashboard layout. 
+         - Top: "Briefing Logistique" cards highlighting critical temporal data from the report (Phenology, Mud, Monday closures).
+         - Middle/Bottom: Interactive Split-View. Left side is a hierarchical menu grouped by "Niveaux" (from the report's matrix). Right side is the deep-dive detail view for the selected route, featuring a dynamic Doughnut chart for terrain composition (paved vs unpaved) when data is available from the report.
+         This structure translates the dense analytical report into an actionable trip-planning tool.
+    -->
+    <!-- Visualization & Content Choices: 
+         1. Info Cards: Present critical text data (Geutelingen, Cafe Bij Jo, Mud) quickly. Goal: Inform.
+         2. Grouped List: Organizes routes by the report's strict hierarchy (Niveau 1 to 4). Goal: Organize/Filter.
+         3. Dynamic Terrain Chart (Doughnut): Uses the specific % data from the report's matrix to show surface composition. Goal: Inform/Prepare.
+         CONFIRMING: NO SVG used. NO Mermaid used. All icons are unicode.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        /* Strict Chart Container Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 300px; /* Constrained width for the donut chart */
+            margin-left: auto;
+            margin-right: auto;
+            height: 250px;
+            max-height: 250px;
+        }
+        
+        .overview-chart-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            max-height: 300px;
+        }
+
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #e2e8f0; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        .route-card.active {
+            border-color: #10b981; /* Emerald 500 */
+            background-color: #ecfdf5; /* Emerald 50 */
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased">
+
+    <!-- Header Section -->
+    <header class="bg-slate-900 text-white shadow-md border-b-4 border-emerald-600">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="text-xs text-emerald-400 font-bold uppercase tracking-widest mb-1">Rapport Opérationnel - Base : Driestenbroekestraat</div>
+            <h1 class="text-3xl font-bold tracking-tight">Analyse Stratégique : Randonnées à Brakel</h1>
+            <p class="mt-2 text-slate-300 text-sm max-w-3xl">
+                Évaluation basée sur le contexte topographique (Getuigenheuvels), historique (frontière linguistique) et phénologique pour la date cible du <strong>Lundi 23 Mars 2026</strong>.
+            </p>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        <!-- Context & Alerts Briefing (Top Section) -->
+        <section>
+            <h2 class="text-xl font-bold mb-4 text-slate-800 flex items-center">
+                <span class="mr-2">📋</span> Briefing Logistique et Environnemental (23 Mars)
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                
+                <!-- Flora / Fauna -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-blue-400">
+                    <h3 class="font-bold text-slate-700 mb-2 flex items-center">🌱 Phénologie Forestière</h3>
+                    <p class="text-sm text-slate-600">
+                        <strong>Pas de jacinthes bleues :</strong> L'apogée est de mi-avril à début mai.
+                        Cependant, la canopée dégarnie permet l'émergence des <strong>anémones des bois</strong> (blanches) et des jonquilles. Forte probabilité d'observer des <strong>chevreuils</strong> à l'aube.
+                    </p>
+                </div>
+
+                <!-- Terrain / Gear -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-amber-500">
+                    <h3 class="font-bold text-slate-700 mb-2 flex items-center">🥾 État du Terrain</h3>
+                    <p class="text-sm text-slate-600">
+                        Sols lourds, argileux et limoneux. Préparez-vous à une <strong>boue profonde, collante et glissante</strong> dans les ravins (Brakelbos, Everbeek). Chaussures de marche robustes et imperméables <strong>strictement obligatoires</strong>.
+                    </p>
+                </div>
+
+                <!-- Monday Logistics -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-emerald-500">
+                    <h3 class="font-bold text-slate-700 mb-2 flex items-center">🍺 Logistique du Lundi</h3>
+                    <p class="text-sm text-slate-600">
+                        Le <strong>Café Bij Jo</strong> (Kasteelstraat 30) est CONFIRMÉ ouvert. Spécialité : Jupiler tankbier sans CO2. 
+                        <em>Fermés le lundi : Bierhuis Parike, De Binnenkoer, D'Hoppe.</em><br>
+                        <em>Note: Le festival des Geutelingen est terminé depuis le 15 février.</em>
+                    </p>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Route Explorer Dashboard -->
+        <section class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+            <div class="flex flex-col lg:flex-row h-auto lg:h-[700px]">
+                
+                <!-- Left Column: Route List grouped by Level -->
+                <div class="w-full lg:w-1/3 bg-slate-50 border-r border-slate-200 flex flex-col">
+                    <div class="p-4 bg-slate-100 border-b border-slate-200">
+                        <h2 class="font-bold text-slate-800">Matrice des Itinéraires</h2>
+                        <p class="text-xs text-slate-500">Classés par niveau d'excellence opérationnelle</p>
+                    </div>
+                    
+                    <div id="routeList" class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-6 pb-6">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Right Column: Detail View -->
+                <div class="w-full lg:w-2/3 p-6 flex flex-col overflow-y-auto custom-scrollbar">
+                    
+                    <div id="detailHeader" class="mb-6 border-b border-slate-100 pb-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span id="detailLevel" class="px-2 py-1 text-xs font-bold rounded uppercase tracking-wider text-white bg-emerald-600">Niveau 1</span>
+                            <span id="detailRating" class="text-sm font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">Score: 4.1/5</span>
+                        </div>
+                        <h2 id="detailTitle" class="text-2xl md:text-3xl font-bold text-slate-900">Brakelbos Wandelroute</h2>
+                        <p id="detailFocus" class="text-slate-600 mt-2 italic">Collines témoins, forêt profonde de hêtres, moulins historiques (Verrebeekmolen)</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+                        
+                        <!-- Details text -->
+                        <div>
+                            <div class="flex items-center gap-4 mb-4">
+                                <div class="bg-slate-100 p-3 rounded-lg text-center">
+                                    <div class="text-xs text-slate-500 uppercase">Distance</div>
+                                    <div id="detailDist" class="text-xl font-bold text-slate-800">10.9 km</div>
+                                </div>
+                                <div class="bg-slate-100 p-3 rounded-lg text-center flex-1">
+                                    <div class="text-xs text-slate-500 uppercase">Évaluation</div>
+                                    <div id="detailEval" class="text-sm font-semibold text-slate-800">Excellence Absolue</div>
+                                </div>
+                            </div>
+
+                            <h3 class="font-bold text-slate-800 mb-2 border-b border-slate-200 pb-1">Analyse Tactique</h3>
+                            <p id="detailDesc" class="text-slate-700 text-sm leading-relaxed mb-4">
+                                Description détaillée de l'itinéraire basée sur le rapport.
+                            </p>
+                        </div>
+
+                        <!-- Terrain Chart -->
+                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 flex flex-col items-center justify-center">
+                            <h3 class="font-bold text-slate-800 mb-1 text-sm text-center">Composition du Terrain</h3>
+                            <p id="terrainWarning" class="text-xs text-amber-600 text-center mb-2 h-4 font-semibold"></p>
+                            
+                            <div id="chartWrapper" class="chart-container">
+                                <canvas id="terrainChart"></canvas>
+                            </div>
+                            
+                            <div id="noChartMsg" class="hidden text-slate-400 text-sm text-center py-10">
+                                Données de surface exactes non spécifiées dans la matrice.
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Application Logic -->
+    <script>
+        // --- 1. Data Store (STRICTLY FROM UPLOADED TEXT) ---
+        const routesData = [
+            {
+                id: 1,
+                level: 1,
+                levelName: "Niveau 1 : L'Excellence Absolue",
+                levelColor: "bg-emerald-600",
+                title: "Brakelbos Wandelroute",
+                distance: 10.9,
+                unpaved: 59,
+                paved: 41,
+                focus: "Collines témoins, forêt profonde de hêtres, moulins historiques (Verrebeekmolen)",
+                rating: "4.1",
+                eval: "Hautement Recommandé",
+                desc: "Le choix tactique optimal absolu. Débute à l'église Sint-Martinuskerk d'Opbrakel (nœud 28). Négocie les pentes escarpées du Mont de Rhode (Modderode) et les ravins du Sassegembeek. Longe le Livierenbos (Hainaut). Points de repère : Verrebeekmolen (réplique de 1996), site de Wolfskerke, Mullenskasteel. Attention : le nœud 30 est dissimulé par un café."
+            },
+            {
+                id: 2,
+                level: 1,
+                levelName: "Niveau 1 : L'Excellence Absolue",
+                levelColor: "bg-emerald-600",
+                title: "Tweebossenpad",
+                distance: 10.0,
+                unpaved: null, // Matrice says "Mixte : Forêt / Agriculture"
+                paved: null,
+                focus: "Histoire de la frontière linguistique (Flandre/Hainaut), marqueurs géographiques",
+                rating: "N/A",
+                eval: "Hautement Recommandé",
+                desc: "Une masterclass en narration géographique. Matérialise physiquement la frontière linguistique établie au 11e siècle. Conçu par les 'Regionale Landschappen'. Alterne forêts denses et vastes paysages agraires. Incorpore un ancien marqueur de frontière en pierre (Steenpaal) et le domaine du Hof Ter Bruggen. Rythme plus lent, intellectuellement stimulant."
+            },
+            {
+                id: 3,
+                level: 1,
+                levelName: "Niveau 1 : L'Excellence Absolue",
+                levelColor: "bg-emerald-600",
+                title: "Reeënpad (Boucle Interne)",
+                distance: 4.4,
+                unpaved: 100,
+                paved: 0,
+                focus: "Ravins fluviaux (Sassegembeek), isolement écologique forestier profond",
+                rating: "N/A",
+                eval: "Hautement Recommandé",
+                desc: "Micro-itinéraire s'initiant depuis le parking de la Brakelbosstraat. Refus absolu des routes agricoles pavées. Force une descente technique vertigineuse vers le Sassegembeek, puis une ascension cardio-vasculaire vers le sommet du Mont de Rhode. Immersion écologique totale et abrupte."
+            },
+            {
+                id: 4,
+                level: 2,
+                levelName: "Niveau 2 : L'Immersion Sauvage",
+                levelColor: "bg-amber-600",
+                title: "Duivel Wandelroute",
+                distance: 10.0,
+                unpaved: 78,
+                paved: 22,
+                focus: "Bois isolés d'Everbeek, rugosité extrême des chemins de terre",
+                rating: "4.6",
+                eval: "Expérience Authentique",
+                desc: "Navigue à travers les Everbeekse Bossen entre Everbeek-Boven et Everbeek-Beneden. Nature écrasante de pistes non asphaltées. Offre une expérience de nature sauvage authentique et physiquement éprouvante. Avertissement critique : intensité maximale de la boue en mars garantie."
+            },
+            {
+                id: 5,
+                level: 2,
+                levelName: "Niveau 2 : L'Immersion Sauvage",
+                levelColor: "bg-amber-600",
+                title: "Weerwolf Wandelroute",
+                distance: 12.0,
+                unpaved: null, // Mixte
+                paved: null,
+                focus: "Corridors inter-forestiers, folklore historique (loups), liaison Livierenbos",
+                rating: "4.5",
+                eval: "Transition Paysagère",
+                desc: "Connecte trois complexes forestiers distincts. Corridor comblant l'écart entre les forêts d'Everbeek et le Livierenbos. La nomenclature fait référence à la présence historique de meutes de loups. Mélange l'esthétique fragmentée et la canopée continue."
+            },
+            {
+                id: 6,
+                level: 2,
+                levelName: "Niveau 2 : L'Immersion Sauvage",
+                levelColor: "bg-amber-600",
+                title: "Kruislieveheer Wandelroute",
+                distance: 13.1,
+                unpaved: null, // Forêts fragmentées / Champs
+                paved: null,
+                focus: "Endurance, isolement extrême dans les confins sud",
+                rating: "4.6",
+                eval: "Solitude Méditative",
+                desc: "Repousse les limites vers les recoins les plus méridionaux. Relie chirurgicalement de multiples taillis isolés. Exige une endurance supérieure. Option tactique excellente pour un lundi où le trafic piétonnier sera quasi nul."
+            },
+            {
+                id: 7,
+                level: 3,
+                levelName: "Niveau 3 : Horizons Panoramiques",
+                levelColor: "bg-blue-500",
+                title: "Brakel Wandelroute",
+                distance: 9.7,
+                unpaved: 33,
+                paved: 67,
+                focus: "Panoramas agricoles balayés par le vent, accessibilité de marche très élevée",
+                rating: "2.7",
+                eval: "Alternative Logistique",
+                desc: "Départ place Sint-Apolloniaplein (Brakel centre). Privilégie les lignes de vue illimitées. Dépourvu de l'immersion écologique brute, mais offre une alternative prévisible si la météo a été pluvieuse, grâce à son fort pourcentage d'asphalte. Moins de fatigue articulaire due à la boue."
+            },
+            {
+                id: 8,
+                level: 3,
+                levelName: "Niveau 3 : Horizons Panoramiques",
+                levelColor: "bg-blue-500",
+                title: "Natuur Wandelroute",
+                distance: 9.4,
+                unpaved: null, // Zones Riveraines
+                paved: null,
+                focus: "Écologie fluviale (Zwalm), agriculture des zones humides",
+                rating: "4.3",
+                eval: "Éducatif",
+                desc: "Trace le cœur hydrologique et économique historique de la région dans la vallée de la Zwalm. Topographie plate. Focus déplacé vers les environnements riverains et la gestion des eaux. Parcours plus éducatif qu'athlétique."
+            },
+            {
+                id: 9,
+                level: 3,
+                levelName: "Niveau 3 : Horizons Panoramiques",
+                levelColor: "bg-blue-500",
+                title: "Boembekemolen Wandelroute",
+                distance: 5.2,
+                unpaved: null,
+                paved: null,
+                focus: "Ingénierie pré-industrielle (moulin), cours moyen de la rivière Zwalm",
+                rating: "N/A",
+                eval: "Apaisement Musculaire",
+                desc: "Exploration hautement condensée autour du Boembekemolen (moulin à eau, origine avant 1302) dans le 'Middenloop Zwalm'. Utilise des sentiers de planches au-dessus des zones humides. Idéal comme marche d'apaisement en fin d'après-midi."
+            },
+            {
+                id: 10,
+                level: 4,
+                levelName: "Niveau 4 : Inadapté / Non Recommandé",
+                levelColor: "bg-red-600",
+                title: "Tussen Brakelbos et Muziekbos",
+                distance: 22.4,
+                unpaved: 0, // "Surabondance d'Asphalte"
+                paved: 100,
+                focus: "Transit de liaison interrégionale, échec de l'immersion forestière",
+                rating: "N/A",
+                eval: "Formellement Déconseillé",
+                desc: "Une faille structurelle de conception. La grande majorité des 22 km se passe sur des routes de connexion pavées intercommunales, sans presque jamais pénétrer dans le cœur des bois. Inefficient pour maximiser le contact avec la nature."
+            }
+        ];
+
+        // --- 2. State & DOM Elements ---
+        let selectedId = routesData[0].id;
+        let terrainChartInstance = null;
+
+        const listContainer = document.getElementById('routeList');
+        const dLevel = document.getElementById('detailLevel');
+        const dRating = document.getElementById('detailRating');
+        const dTitle = document.getElementById('detailTitle');
+        const dFocus = document.getElementById('detailFocus');
+        const dDist = document.getElementById('detailDist');
+        const dEval = document.getElementById('detailEval');
+        const dDesc = document.getElementById('detailDesc');
+        const chartWrapper = document.getElementById('chartWrapper');
+        const noChartMsg = document.getElementById('noChartMsg');
+        const terrainWarning = document.getElementById('terrainWarning');
+
+        // --- 3. Initialization ---
+        function init() {
+            renderList();
+            updateDetailView(selectedId);
+        }
+
+        // Group routes by level for the list
+        function renderList() {
+            listContainer.innerHTML = '';
+            
+            // Group logic
+            const levels = [1, 2, 3, 4];
+            
+            levels.forEach(lvl => {
+                const routesInLevel = routesData.filter(r => r.level === lvl);
+                if(routesInLevel.length === 0) return;
+
+                // Group Header
+                const groupHeader = document.createElement('div');
+                groupHeader.className = 'mt-4 mb-2 px-2';
+                groupHeader.innerHTML = `<h3 class="text-sm font-bold text-slate-500 uppercase">${routesInLevel[0].levelName}</h3>`;
+                listContainer.appendChild(groupHeader);
+
+                // Group Items
+                routesInLevel.forEach(route => {
+                    const isActive = route.id === selectedId;
+                    
+                    const item = document.createElement('div');
+                    item.className = `route-card cursor-pointer mx-2 p-3 rounded-lg border-2 transition-all ${isActive ? 'active' : 'border-transparent bg-white shadow-sm hover:border-slate-300'}`;
+                    item.onclick = () => selectRoute(route.id);
+                    
+                    item.innerHTML = `
+                        <div class="font-bold text-slate-800 text-sm">${route.title}</div>
+                        <div class="flex justify-between items-center mt-1">
+                            <span class="text-xs text-slate-500">${route.distance} km</span>
+                            ${route.rating !== 'N/A' ? `<span class="text-xs font-semibold text-slate-400">⭐ ${route.rating}</span>` : ''}
+                        </div>
+                    `;
+                    listContainer.appendChild(item);
+                });
+            });
+        }
+
+        function selectRoute(id) {
+            selectedId = id;
+            renderList(); // Update active class
+            updateDetailView(id);
+        }
+
+        function updateDetailView(id) {
+            const route = routesData.find(r => r.id === id);
+            
+            // Text Updates
+            dLevel.textContent = `Niveau ${route.level}`;
+            dLevel.className = `px-2 py-1 text-xs font-bold rounded uppercase tracking-wider text-white ${route.levelColor}`;
+            
+            dRating.textContent = route.rating === 'N/A' ? 'Score non applicable' : `Score: ${route.rating}/5`;
+            dTitle.textContent = route.title;
+            dFocus.textContent = route.focus;
+            dDist.textContent = `${route.distance} km`;
+            dEval.textContent = route.eval;
+            dDesc.textContent = route.desc;
+
+            // Chart Logic
+            if (route.unpaved !== null && route.paved !== null) {
+                chartWrapper.classList.remove('hidden');
+                noChartMsg.classList.add('hidden');
+                
+                if(route.unpaved > 70) {
+                    terrainWarning.textContent = "⚠️ Risque maximal de boue argileuse";
+                } else if (route.level === 4) {
+                    terrainWarning.textContent = "🛑 Surabondance d'asphalte détectée";
+                } else {
+                    terrainWarning.textContent = "";
+                }
+
+                updateTerrainChart(route.unpaved, route.paved);
+            } else {
+                chartWrapper.classList.add('hidden');
+                noChartMsg.classList.remove('hidden');
+                terrainWarning.textContent = "";
+            }
+        }
+
+        function updateTerrainChart(unpaved, paved) {
+            const ctx = document.getElementById('terrainChart').getContext('2d');
+            
+            if (terrainChartInstance) {
+                terrainChartInstance.destroy();
+            }
+
+            terrainChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Non Pavé (Terre/Boue)', 'Pavé (Asphalte)'],
+                    datasets: [{
+                        data: [unpaved, paved],
+                        backgroundColor: [
+                            '#854d0e', // yellow-800 for unpaved earth
+                            '#94a3b8'  // slate-400 for asphalt
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#f8fafc'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: { size: 11 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.label}: ${context.raw}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Boot
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
